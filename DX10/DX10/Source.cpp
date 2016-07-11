@@ -107,12 +107,14 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 	viewPort.TopLeftY = 0;
 	pDevice->RSSetViewports(1, &viewPort);
 
+	//’¸“_‚ð’è‹`
 	MyVertex vtx[] = {
 		D3DXVECTOR3(0.0f, 0.5f, 0.5f), D3DXVECTOR3(1.0f, 1.0f, 1.0f),
 		D3DXVECTOR3(0.5f, -0.5f, 0.5f), D3DXVECTOR3(1.0f, 1.0f, 1.0f),
 		D3DXVECTOR3(-0.5f, -0.5f, 0.5f), D3DXVECTOR3(1.0f, 1.0f, 1.0f)
 	};
 	
+	//SetFVF“I‚È‚â‚Â
 	D3D10_INPUT_ELEMENT_DESC MyVertexDesc[] = {
 		{ "IN_POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },
 		{ "IN_COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, sizeof(D3DXVECTOR3), D3D10_INPUT_PER_VERTEX_DATA, 0 }
