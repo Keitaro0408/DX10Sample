@@ -65,8 +65,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 	IDXGISwapChain* pSwapChain = NULL;
 	DXGI_SWAP_CHAIN_DESC swapChainDesc;
 
-	swapChainDesc.BufferDesc.Width = 1280;
-	swapChainDesc.BufferDesc.Height = 720;
+	swapChainDesc.BufferDesc.Width = CLIENT_WIDTH;
+	swapChainDesc.BufferDesc.Height = CLIENT_HEIGHT;
 	swapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
 	swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
 	swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
@@ -99,8 +99,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 
 	//ビューポートの設定
 	D3D10_VIEWPORT viewPort;
-	viewPort.Width = 1280;
-	viewPort.Height = 720;
+	viewPort.Width = CLIENT_WIDTH;
+	viewPort.Height = CLIENT_HEIGHT;
 	viewPort.MinDepth = 0.0f;
 	viewPort.MaxDepth = 1.0f;
 	viewPort.TopLeftX = 0;
@@ -119,6 +119,21 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 		{ "IN_POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },
 		{ "IN_COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, sizeof(D3DXVECTOR3), D3D10_INPUT_PER_VERTEX_DATA, 0 }
 	};
+
+	D3D10_BUFFER_DESC bufferDesc;
+	bufferDesc.ByteWidth = 3 * sizeof(MyVertex);
+	bufferDesc.Usage = D3D10_USAGE_DEFAULT;
+	bufferDesc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+	bufferDesc.CPUAccessFlags = 0;
+	bufferDesc.MiscFlags = 0;
+
+	D3D10_SUBRESOURCE_DATA subresourceData;
+	subresourceData.pSysMem = vtx;
+
+	ID3D10Buffer *pBuffer;
+	if (FAILED(pDevice->CreateBuffer(&bufferDesc, &subresourceData, &pBuffer)))
+		return false;
+
 	DWORD NowTime = timeGetTime();
 	DWORD OldTime = timeGetTime();
 
