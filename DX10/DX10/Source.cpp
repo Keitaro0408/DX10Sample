@@ -169,6 +169,31 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 	DWORD NowTime = timeGetTime();
 	DWORD OldTime = timeGetTime();
 	float ClearColor[4] = { 0.0f, 0.125f, 0.6f, 1.0f }; // RGBA
+	float angle = 0.f;
+
+	ID3D10EffectMatrixVariable *pWorldMatVar;
+	ID3D10EffectMatrixVariable *pViewMatVar;
+	ID3D10EffectMatrixVariable *pProjMatVar;
+
+	D3DXMATRIX World;
+	D3DXMATRIX View;
+	D3DXMATRIX Proj;
+
+	pWorldMatVar = pEffect->GetVariableByName("g_World")->AsMatrix();
+	pViewMatVar = pEffect->GetVariableByName("g_View")->AsMatrix();
+	pProjMatVar = pEffect->GetVariableByName("g_Proj")->AsMatrix();
+	D3DXMatrixIdentity(&View);
+	D3DXMatrixIdentity(&World);
+
+	D3DXMatrixLookAtLH(&View, &D3DXVECTOR3(0, 0, -2.0f), &D3DXVECTOR3(0, 0, 0), &D3DXVECTOR3(0, 1, 0));
+	D3DXMatrixPerspectiveFovLH(&Proj,
+		(float)(D3DX_PI / 4.0), //視野角(ここでは45度をセットしてます)
+		(float)(1280 / 720),     //画面アスペクト比
+		1.0f,                 //クリッピング距離（これより近いのは描画しません）
+		100.0f);          //クリッピング距離（これより遠いのは描画しません)
+
+	pViewMatVar->SetMatrix((float*)&View);
+	pProjMatVar->SetMatrix((float*)&Proj);
 
 	// メッセージループ
 	ZeroMemory(&msg, sizeof(msg));
@@ -184,6 +209,11 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 			NowTime = timeGetTime();
 			if (NowTime - OldTime >= GAME_FPS)
 			{
+				
+				// 回転
+				D3DXMatrixRotationZ(&World, (float)D3DXToRadian(angle += 0.4f));
+				pWorldMatVar->SetMatrix((float*)&World);
+
 				D3D10_TECHNIQUE_DESC techDesc;
 				pDevice->ClearRenderTargetView(pRenderTargetView, ClearColor);
 				pTechnique->GetDesc(&techDesc);
