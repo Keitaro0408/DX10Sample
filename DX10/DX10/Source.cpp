@@ -33,7 +33,6 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 	WNDCLASSEX  wndclass;
 
 
-
 	wndclass.cbSize = sizeof(wndclass);
 	wndclass.style = CS_HREDRAW | CS_VREDRAW;
 	wndclass.lpfnWndProc = WindowProc;
@@ -132,10 +131,44 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 
 	ID3D10Buffer *pBuffer;
 	if (FAILED(pDevice->CreateBuffer(&bufferDesc, &subresourceData, &pBuffer)))
+	{
 		return false;
+	}
+
+	UINT stride = sizeof(MyVertex);
+	UINT offset = 0;
+	pDevice->IASetVertexBuffers(0,1,&pBuffer,&stride,&offset);
+	pDevice->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	D3D10_PASS_DESC passDesc;
+	ID3D10EffectTechnique *pTechnique;
+	ID3D10Effect *pEffect;
+
+	// シェーダファイルからエフェクトを作る
+	if (FAILED(D3DX10CreateEffectFromFile("MyShader.fx", NULL, NULL,
+		"fx_4_0", D3D10_SHADER_ENABLE_STRICTNESS, 0, pDevice, NULL, NULL, &pEffect, NULL, NULL)))
+		return FALSE;
+
+	// エフェクトからテクニック情報を取得
+	pTechnique = pEffect->GetTechniqueByName("SimpleRender");
+
+	// テクニックからパス情報を取得
+	pTechnique->GetPassByIndex(0)->GetDesc(&passDesc);
+
+	ID3D10InputLayout *pVertexLayout;
+
+	// 頂点レイアウトを作成
+	if (FAILED(pDevice->CreateInputLayout(
+		MyVertexDesc, sizeof(MyVertexDesc) / sizeof(D3D10_INPUT_ELEMENT_DESC),
+		passDesc.pIAInputSignature, passDesc.IAInputSignatureSize, &pVertexLayout)))
+		return FALSE;
+
+	// 頂点レイアウトを描画デバイスにセット
+	pDevice->IASetInputLayout(pVertexLayout);
 
 	DWORD NowTime = timeGetTime();
 	DWORD OldTime = timeGetTime();
+	float ClearColor[4] = { 0.0f, 0.125f, 0.6f, 1.0f }; // RGBA
 
 	// メッセージループ
 	ZeroMemory(&msg, sizeof(msg));
@@ -151,9 +184,18 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 			NowTime = timeGetTime();
 			if (NowTime - OldTime >= GAME_FPS)
 			{
-				float ClearColor[4] = { 0.0f, 0.125f, 0.6f, 1.0f }; // RGBA
+				D3D10_TECHNIQUE_DESC techDesc;
 				pDevice->ClearRenderTargetView(pRenderTargetView, ClearColor);
+				pTechnique->GetDesc(&techDesc);
+				for (UINT p = 0; p < techDesc.Passes; ++p)
+				{
+					pTechnique->GetPassByIndex(p)->Apply(0);
+					pDevice->Draw(3, 0);
+				}
 				pSwapChain->Present(0, 0);
+				//float ClearColor[4] = { 0.0f, 0.125f, 0.6f, 1.0f }; // RGBA
+				//pDevice->ClearRenderTargetView(pRenderTargetView, ClearColor);
+				//pSwapChain->Present(0, 0);
 				OldTime = timeGetTime();
 			}
 		}
