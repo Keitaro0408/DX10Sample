@@ -11,11 +11,13 @@
 #define CLIENT_WIDTH  1280
 #define CLIENT_HEIGHT  720
 
+#define VERTEXNUM 4
+
 #define GAME_FPS (1000/60)
 
 struct MyVertex {
 	D3DXVECTOR3 Pos;      // 頂点位置
-	D3DXVECTOR3 Color;    // 頂点カラー
+	D3DXVECTOR2 UV;
 };
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
@@ -108,19 +110,20 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 
 	//頂点を定義
 	MyVertex vtx[] = {
-		D3DXVECTOR3(0.0f, 0.5f, 0.5f), D3DXVECTOR3(1.0f, 1.0f, 1.0f),
-		D3DXVECTOR3(0.5f, -0.5f, 0.5f), D3DXVECTOR3(1.0f, 1.0f, 1.0f),
-		D3DXVECTOR3(-0.5f, -0.5f, 0.5f), D3DXVECTOR3(1.0f, 1.0f, 1.0f)
+		D3DXVECTOR3(-0.2f, 0.2f, 0.0f), D3DXVECTOR2(0.0f, 0.0f),
+		D3DXVECTOR3(0.2f, 0.2f, 0.0f), D3DXVECTOR2(1.0f, 0.0f),
+		D3DXVECTOR3(-0.2f, -0.2f, 0.0f), D3DXVECTOR2(0.0f, 1.0f),
+		D3DXVECTOR3(0.2f, -0.2f, 0.0f), D3DXVECTOR2(1.0f, 1.0f)
 	};
 	
 	//SetFVF的なやつ
 	D3D10_INPUT_ELEMENT_DESC MyVertexDesc[] = {
 		{ "IN_POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },
-		{ "IN_COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, sizeof(D3DXVECTOR3), D3D10_INPUT_PER_VERTEX_DATA, 0 }
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
 	D3D10_BUFFER_DESC bufferDesc;
-	bufferDesc.ByteWidth = 3 * sizeof(MyVertex);
+	bufferDesc.ByteWidth = VERTEXNUM * sizeof(MyVertex);
 	bufferDesc.Usage = D3D10_USAGE_DEFAULT;
 	bufferDesc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
 	bufferDesc.CPUAccessFlags = 0;
@@ -138,7 +141,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 	UINT stride = sizeof(MyVertex);
 	UINT offset = 0;
 	pDevice->IASetVertexBuffers(0,1,&pBuffer,&stride,&offset);
-	pDevice->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	pDevice->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
 	D3D10_PASS_DESC passDesc;
 	ID3D10EffectTechnique *pTechnique;
@@ -166,6 +169,13 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 	// 頂点レイアウトを描画デバイスにセット
 	pDevice->IASetInputLayout(pVertexLayout);
 
+	//画像読み込み
+	ID3D10ShaderResourceView*   pTextureRV = NULL;
+	if (FAILED(D3DX10CreateShaderResourceViewFromFile(pDevice, "test.jpg", NULL, NULL, &pTextureRV, NULL)))
+	{
+		MessageBox(NULL,"","テクスチャの読み込みに失敗しました",MB_OK);
+	}
+
 	DWORD NowTime = timeGetTime();
 	DWORD OldTime = timeGetTime();
 	float ClearColor[4] = { 0.0f, 0.125f, 0.6f, 1.0f }; // RGBA
@@ -174,14 +184,16 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 	ID3D10EffectMatrixVariable *pWorldMatVar;
 	ID3D10EffectMatrixVariable *pViewMatVar;
 	ID3D10EffectMatrixVariable *pProjMatVar;
+	ID3D10EffectShaderResourceVariable *pTexMatVar;
 
 	D3DXMATRIX World;
 	D3DXMATRIX View;
 	D3DXMATRIX Proj;
 
-	pWorldMatVar = pEffect->GetVariableByName("g_World")->AsMatrix();
-	pViewMatVar = pEffect->GetVariableByName("g_View")->AsMatrix();
-	pProjMatVar = pEffect->GetVariableByName("g_Proj")->AsMatrix();
+	pWorldMatVar = pEffect->GetVariableByName("World")->AsMatrix();
+	pViewMatVar = pEffect->GetVariableByName("View")->AsMatrix();
+	pProjMatVar = pEffect->GetVariableByName("Proj")->AsMatrix();
+	pTexMatVar = pEffect->GetVariableByName("Texture")->AsShaderResource();
 	D3DXMatrixIdentity(&View);
 	D3DXMatrixIdentity(&World);
 
@@ -194,7 +206,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 
 	pViewMatVar->SetMatrix((float*)&View);
 	pProjMatVar->SetMatrix((float*)&Proj);
-
+	pTexMatVar->SetResource(pTextureRV);
 	// メッセージループ
 	ZeroMemory(&msg, sizeof(msg));
 	while (msg.message != WM_QUIT)
@@ -211,7 +223,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 			{
 				
 				// 回転
-				D3DXMatrixRotationZ(&World, (float)D3DXToRadian(angle += 0.4f));
+				D3DXMatrixRotationZ(&World, (float)D3DXToRadian(angle));
 				pWorldMatVar->SetMatrix((float*)&World);
 
 				D3D10_TECHNIQUE_DESC techDesc;
@@ -220,18 +232,15 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR szStr, INT iCmdSh
 				for (UINT p = 0; p < techDesc.Passes; ++p)
 				{
 					pTechnique->GetPassByIndex(p)->Apply(0);
-					pDevice->Draw(3, 0);
+					pDevice->Draw(VERTEXNUM, 0);
 				}
-				pSwapChain->Present(0, 0);
-				//float ClearColor[4] = { 0.0f, 0.125f, 0.6f, 1.0f }; // RGBA
-				//pDevice->ClearRenderTargetView(pRenderTargetView, ClearColor);
-				//pSwapChain->Present(0, 0);
-				OldTime = timeGetTime();
+				pSwapChain->Present(0, 0);				OldTime = timeGetTime();
 			}
 		}
 	}
 
 	pDevice->ClearState();
+	pTextureRV->Release();
 	pRenderTargetView->Release();
 	pDevice->Release();
 	pSwapChain->Release();

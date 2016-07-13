@@ -1,21 +1,44 @@
-float4x4 g_World;
-float4x4 g_View;
-float4x4 g_Proj;
-// 頂点シェーダ
-float4 VS(float4 Pos : IN_POSITION) : SV_POSITION
+float4x4 World;
+float4x4 View;
+float4x4 Proj;
+Texture2D Texture;
+
+//テクスチャの座標の設定
+SamplerState samLinear
 {
-	// 射影空間へ変換
-	Pos = mul(Pos, g_World);
-	Pos = mul(Pos, g_View);
-	Pos = mul(Pos, g_Proj);
-	return Pos; 
+	Filter = MIN_MAG_MIP_LINEAR;
+	AddressU = Wrap;
+	AddressV = Wrap;
+};
+
+struct VS_INPUT
+{
+	float4 Pos : IN_POSITION;
+	float2 Tex : TEXCOORD;
+};
+
+struct PS_INPUT
+{
+	float4 Pos : SV_POSITION;
+	float2 Tex : TEXCOORD0;
+};
+
+// 頂点シェーダ
+PS_INPUT VS(VS_INPUT input)
+{
+	PS_INPUT output = (PS_INPUT)0;
+	output.Pos = mul(input.Pos, World);
+	output.Pos = mul(output.Pos, View);
+	output.Pos = mul(output.Pos, Proj);
+	output.Tex = input.Tex;
+
+	return output;
 }
 
 // ピクセルシェーダ
-float4 PS(float4 Pos : SV_POSITION) : SV_Target
+float4 PS(PS_INPUT input) : SV_Target
 {
-	// 黄色い色で塗る
-	return float4(1.0f, 1.0f, 0.0f, 1.0f);
+	return Texture.Sample(samLinear, input.Tex);
 }
 
 // テクニック
